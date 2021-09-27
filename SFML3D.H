@@ -9,10 +9,90 @@
 #include <SFML/OpenGL.hpp>
 #include <gl/GLU.h>
 
+#ifndef SFML3D_ENGLISH
+#define SFML3D_RUSSIAN
+#endif
+
+///////////////////////////////////////////////////////////////////////////////
+
+namespace sf
+{
+    template<typename _Value_type>
+    using Vector4 = sf::priv::Vector4<_Value_type>;
+
+    using Vector4f = sf::Vector4<GLfloat>;
+
+    template<typename _Value_type>
+    constexpr void operator += (sf::Vector4<_Value_type>& v1, const sf::Vector4<_Value_type>& v2)
+    {
+        v1.x += v2.x;
+        v1.y += v2.y;
+        v1.z += v2.z;
+        v1.w += v2.w;
+    }
+	
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+
 namespace sf
 {
 
     class Transformable3D;
+    class Sizeable3D;
+
+    namespace priv
+    {
+        struct Size3D
+        {
+
+            friend class Sizeable3D;
+        	
+        public:
+        	
+            Size3D(const sf::Vector3<GLfloat>& size) :
+        		m_size(size)
+            {
+	            
+            }
+        	
+        protected:
+
+            ////////////////////////////////////////////////////////////
+            // Member data
+            ////////////////////////////////////////////////////////////
+            mutable sf::Vector3<GLfloat> m_size;
+        	
+        };
+
+    	class Sizeable3D : public Size3D
+    	{
+    	public:
+    		Sizeable3D(const sf::Vector3<GLfloat>& size = {}) :
+    			Size3D(size)
+    		{
+    			
+    		}
+
+    		void setSize(const sf::Vector3<GLfloat>& size) const
+    		{
+                m_size = size;
+    		}
+
+            void setSize(const GLfloat& size_x, const GLfloat& size_y, const GLfloat& size_z) const
+            {
+                m_size.x = size_x;
+                m_size.y = size_y;
+                m_size.z = size_z;
+            }
+
+            sf::Vector3<GLfloat>& getSize() const
+    		{
+                return m_size;
+    		}
+    	};
+    }
 	
 	struct Transform3D
 	{
@@ -20,6 +100,7 @@ namespace sf
         friend class Transformable3D;
 		
 	public:
+    	
         Transform3D() :
             m_origin(0, 0, 0),
             m_position(0, 0, 0),
@@ -29,10 +110,7 @@ namespace sf
         {
 
         }
-
 	
-    protected:
-
         ////////////////////////////////////////////////////////////
         // Member data
         ////////////////////////////////////////////////////////////
@@ -40,7 +118,7 @@ namespace sf
         mutable Vector3<GLfloat>          m_position;                   ///< Position of the object in the 2D world
         mutable Vector3<GLfloat>          m_rotation;                   ///< Orientation of the object, in degrees
         mutable Vector3<GLfloat>          m_scale;                      ///< Scale of the object
-        mutable Color                         m_color;
+        mutable Color                     m_color;
 	};
 
 	
@@ -48,7 +126,7 @@ namespace sf
     /// \brief Decomposed transform defined by a position, a rotation and a scale
     ///
     ////////////////////////////////////////////////////////////
-    class Transformable3D : public Transform3D
+    class Transformable3D : protected Transform3D
     {
 
     public:
@@ -121,6 +199,27 @@ namespace sf
         void setRotation(const GLfloat x, const GLfloat y, const GLfloat z) const
         {
             this->m_rotation = { x, y, z };
+        }
+
+
+        ////////////////////////////////////////////////////////////
+        /// \brief set the orientation of the object
+        ///
+        /// This function completely overwrites the previous rotation.
+        /// See the rotate function to add an angle based on the previous rotation instead.
+        /// The default rotation of a Transformable3D object is (0, 0, 0).
+        ///
+        /// \param rotation
+        /// x (pitch) New rotation x, in degrees
+        /// y (yaw) New rotation y, in degrees
+        /// z (roll) New rotation z, in degrees
+        ///
+        /// \see rotate, getRotation
+        ///
+        ////////////////////////////////////////////////////////////
+        void setRotation(const sf::Vector3<GLfloat>& rotation) const
+        {
+            this->m_rotation = rotation;
         }
 
         ////////////////////////////////////////////////////////////
@@ -392,15 +491,6 @@ namespace sf
             m_scale.z += factor.z;
         }
 
-        ////////////////////////////////////////////////////////////
-        /// \brief get the combined transform of the object
-        ///
-        /// \return Transform combining the position/rotation/scale/origin of the object
-        ///
-        /// \see getInverseTransform
-        ///
-        ////////////////////////////////////////////////////////////
-
         void setPitch(const GLfloat pitch) const
         {
             m_rotation.x = pitch;
@@ -465,6 +555,22 @@ namespace sf
             glRotatef(this->m_rotation.z, 0, 0, 1);
         }
 
+    	static void transform(const Transform3D& transform)
+        {
+            glLoadIdentity();
+
+            glTranslatef(transform.m_position.x, transform.m_position.y, transform.m_position.z);
+            glTranslatef(transform.m_origin.x, transform.m_origin.y, transform.m_origin.z);
+
+            glScalef(transform.m_scale.x, transform.m_scale.y, transform.m_scale.z);
+
+            glColor4ub(transform.m_color.r, transform.m_color.g, transform.m_color.b, transform.m_color.a);
+
+            glRotatef(transform.m_rotation.x, 1, 0, 0);
+            glRotatef(transform.m_rotation.y, 0, 1, 0);
+            glRotatef(transform.m_rotation.z, 0, 0, 1);
+        }
+
         void glReleaseTransform(const Transform3D& transform) const
         {
             glLoadIdentity();
@@ -490,7 +596,7 @@ namespace sf
             glRotatef(this->m_rotation.z, 0, 0, 1);
             glRotatef(transform.m_rotation.z, 0, 0, 1);
         }
-
+    	
         //inline static Transformable3D DEFAULT_TRANSFORMABLE = Transformable3D();
 
     };
@@ -532,9 +638,9 @@ namespace sf
             z(z),
             tex_cord_x(tex_cord_x),
             tex_cord_y(tex_cord_y),
-            normal_x(x),
-            normal_y(y),
-            normal_z(z)
+            normal_x(0),
+            normal_y(0),
+            normal_z(1)
             //r(r),
             //g(g),
             //b(b),
@@ -610,6 +716,8 @@ namespace sf
 
     namespace priv
     {
+
+
     
         class Texture3D : public Texture
         {
@@ -685,50 +793,51 @@ namespace sf
     protected:
         priv::Texture3D texture_;
     };
-	
+
     ///////////////////////////////////////////////////////////////////////////////
-	
-    class Drawable3D
+    namespace priv
     {
-
-        friend class Window3D;
-    	
-    public:
-	    virtual ~Drawable3D() = default;;
-
-        explicit Drawable3D(const int pointer_end = 0) : drawable_num_(0),
-                                                         pointer_end_(pointer_end),
-                                                         pointer_begin_(0)
+        class Drawable3D : public Drawable
         {
-        }
-    
-    public:
-	    void onGettingPointerBegin(const int pointer_int) const
-        {
-            pointer_begin_ = pointer_int;
-        }
-    	
-	    void onGettingDrawableNum(const int drawable_num) const
-	    {
-            drawable_num_ = drawable_num;
-	    }
 
+            friend class Window3D;
 
-        virtual void  draw(const Transform3D& transform) = 0;
+        public:
+            virtual ~Drawable3D() = default;;
 
-        inline void __fastcall drawArrays(const GLenum mode) const
-        {
-            glDrawArrays(mode, this->pointer_begin_, this->pointer_end_);
-        }
-    
-    protected:
-        mutable int drawable_num_;
-        int pointer_end_;
-        mutable int pointer_begin_;
-        std::vector<GLfloat> points_;
-        mutable bool not_reg_ = true;
-    };
+            explicit Drawable3D(const int pointer_end = 0) :
+        		drawable_num_(0),
+                pointer_end_(pointer_end),
+                pointer_begin_(0)
+            {
+            }
 
+        public:
+            void onGettingPointerBegin(const int pointer_int) const
+            {
+                pointer_begin_ = pointer_int;
+            }
+
+            void onGettingDrawableNum(const int drawable_num) const
+            {
+                drawable_num_ = drawable_num;
+            }
+
+            void draw(RenderTarget& target, RenderStates states) const override = 0;
+
+            inline void __fastcall drawArrays(const GLenum mode) const
+            {
+                glDrawArrays(mode, this->pointer_begin_, this->pointer_end_);
+            }
+
+        protected:
+            mutable int drawable_num_;
+            int pointer_end_;
+            mutable int pointer_begin_;
+            std::vector<GLfloat> points_;
+            mutable bool not_reg_ = true;
+        };
+    }
 
 ///////////////////////////////////////////////////////////////////////////////
 	
@@ -737,33 +846,17 @@ namespace sf
     public:
 
         Eye(const Vector2u window_size, 
-            const GLdouble fov = 60., 
+            const GLdouble fov = 60.0,
+            const GLdouble zFar = 5000.0,
             const Vector3<GLfloat>& position = {}, 
             const Vector3<GLfloat>& rotation = {}) :
             fov_(fov),
             aspect_(static_cast<GLdouble>(window_size.x) / 
-                static_cast<GLdouble>(window_size.y))
+                static_cast<GLdouble>(window_size.y)),
+    		far_(zFar)
         {
             this->m_position = position;
             this->m_rotation = rotation;
-        }
-
-        void draw(RenderTarget& target, RenderStates states) const override
-        {
-            glMatrixMode(GL_PROJECTION);
-            glLoadIdentity();
-            gluPerspective(fov_, aspect_, 1.0, 50000);
-
-            /*gluLookAt(
-                this->m_position.x, this->m_position.y, this->m_position.z,
-                0, 0,0,
-                0, 1.0, 0);*/
-            glRotatef(this->m_rotation.x, 1, 0, 0);
-            glRotatef(this->m_rotation.y, 0, 1, 0);
-            glRotatef(this->m_rotation.z, 0, 0, 1);
-            glTranslatef(-this->m_position.x, 
-                -this->m_position.y, -this->m_position.z);
-            //glTranslated(-this->m_origin.x, -this->m_origin.y, -this->m_origin.z);
         }
 
     	void setFOV(const GLdouble fov) const
@@ -786,32 +879,48 @@ namespace sf
         {
             return aspect_;
         }
+
+    protected:
+        void draw(RenderTarget& target, RenderStates states) const override
+        {
+            glMatrixMode(GL_PROJECTION);
+            glLoadIdentity();
+            gluPerspective(fov_, aspect_, .001, far_);
+
+            /*gluLookAt(
+                this->m_position.x, this->m_position.y, this->m_position.z,
+                0, 0,0,
+                0, 1.0, 0);*/
+            glRotatef(this->m_rotation.x, 1, 0, 0);
+            glRotatef(this->m_rotation.y, 0, 1, 0);
+            glRotatef(this->m_rotation.z, 0, 0, 1);
+            glTranslatef(-this->m_position.x,
+                -this->m_position.y, -this->m_position.z);
+            //glTranslated(-this->m_origin.x, -this->m_origin.y, -this->m_origin.z);
+        }
     
     protected:
         mutable GLdouble fov_;
         mutable GLdouble aspect_;
+        mutable GLdouble far_;
     };
 
-///////////////////////////////////////////////////////////////////////////////
-
-
-	
 ///////////////////////////////////////////////////////////////////////////////
 
     class Window3D : public RenderWindow
     {
     private:
-        inline static GLint pointer_begin_ = 0;
-        inline static GLint pointer_begin_last_ = 0;
-        inline static GLint drawable_enumerator_ = 0;
+        static inline GLint pointer_begin_ = 0;
+        static inline GLint pointer_begin_last_ = 0;
+        static inline GLint drawable_enumerator_ = 0;
     
     public:
 
-        inline static std::vector<GLfloat> pointer = {};
+        static inline std::vector<GLfloat> pointer = {};
 
-    	inline static void reloadPointer(Drawable3D* drawable)
+    	static void reloadPointer(const priv::Drawable3D* drawable)
         {
-            if (drawable->not_reg_)
+            if (drawable->not_reg_) 
             {
                 drawable->not_reg_ = false;
                 glEnableClientState(GL_VERTEX_ARRAY);
@@ -825,7 +934,7 @@ namespace sf
                 glNormalPointer(GL_FLOAT, 5 * sizeof(GLfloat), pointer.data() + 5);
 
                 // Disable normal and color vertex components
-
+                //glDisableClientState(GL_NORMAL_ARRAY);
                 glDisableClientState(GL_COLOR_ARRAY);
             }
         }
@@ -859,15 +968,56 @@ namespace sf
             drawable_enumerator_++;
 			return pointer_begin_;
     	}
-    	
-        void draw3D(Drawable3D& drawable, const Transform3D& transformable = {})
-        {
 
-            drawable.draw(transformable);
+    private:
+        static inline GLfloat params4_[4] = { .0F, .0F, .0F, .0F };
+        static inline GLfloat params3_[3] = { .0F, .0F, .0F };
+
+    public:
+
+    	static void lightfv(
+            const GLenum&  light, 
+            const GLenum&  pname, 
+            const Vector4<GLfloat>& params)
+        {
+            params4_[0] = params.x;
+            params4_[1] = params.y;
+            params4_[2] = params.z;
+            params4_[3] = params.w;
+            glLightfv(light, pname, params4_);
         }
+
+        static void lightfv(
+            const GLenum&  light,
+            const GLenum&  pname,
+            const Vector3<GLfloat>& params,
+            const GLfloat& param4)
+        {
+            params4_[0] =  params.x;
+            params4_[1] =  params.y;
+            params4_[2] =  params.z;
+            params4_[3] =  param4;
+            glLightfv(light, pname, params4_);
+        }
+
+        static void lightfv(
+            const GLenum&  light,
+            const GLenum&  pname,
+            const Vector3<GLfloat>& params)
+        {
+            params3_[0] = params.x;
+            params3_[1] = params.y;
+            params3_[2] = params.z;
+            glLightfv(light, pname, params3_);
+        }
+    	
     };
 
-    class Triangle3D : public Transformable3D, public Drawable3D, public Textureable3D
+    class Triangle3D :
+		public Transformable3D,
+		public priv::Drawable3D,
+		public Textureable3D,
+        public priv::Sizeable3D
     {
     public:
         static void pushPointsBySize(
@@ -885,21 +1035,25 @@ namespace sf
     public:
 
     	Triangle3D() :
-            Transformable3D(), Drawable3D(3)
+            Transformable3D(),
+    		Drawable3D(3)
         {
             pushPointsBySize(1, 1);
             this->pointer_begin_ = Window3D::registerDrawable3D(3);
         }
     	
         Triangle3D(const Point& point0, const Point& point1, const Point& point2) :
-            Transformable3D(), Drawable3D(3)
+            Transformable3D(),
+    		Drawable3D(3)
         {
             Window3D::pushPoint(point0, point1, point2);
             this->pointer_begin_ = Window3D::registerDrawable3D(3);
         }
 
         Triangle3D(const Vector3f& position, const Vector2f& size) :
-            Transformable3D(), Drawable3D(3)
+            Transformable3D(),
+    		Drawable3D(3),
+    		Sizeable3D({ size.x, size.y, 0.0F })
         {
             pushPointsBySize(size.x, size.y);
             this->m_position = position;
@@ -907,7 +1061,9 @@ namespace sf
         }
 
         Triangle3D(const Vector2f& size) :
-            Transformable3D(), Drawable3D(3)
+            Transformable3D(),
+    		Drawable3D(3),
+    		Sizeable3D({ size.x, size.y, 0.0F })
         {
             pushPointsBySize(size.x, size.y);
             this->pointer_begin_ = Window3D::registerDrawable3D(3);
@@ -915,24 +1071,33 @@ namespace sf
         }
 
         Triangle3D(const GLfloat size_x, const GLfloat size_y) :
-            Transformable3D(), Drawable3D(3)
+            Transformable3D(),
+    		Drawable3D(3),
+            Sizeable3D({ size_x, size_y, 0.0F })
         {
             pushPointsBySize(size_x, size_y);
             this->pointer_begin_ = Window3D::registerDrawable3D(3);
         }
-    	
-        void draw(const Transform3D& transform) override
-        {
+
+    protected:
+        void draw(RenderTarget& target, RenderStates states) const override
+    	{
             priv::TextureManager3D::bindTexture3D(&this->texture_);
             Window3D::reloadPointer(this);
-            this->glReleaseTransform(transform);
+            glMatrixMode(GL_MODELVIEW);
+            this->glReleaseTransform();
             this->drawArrays(GL_TRIANGLES);
-        }
+    	}
+
     };
 
-    class Quad3D : public Transformable3D, public Drawable3D, public Textureable3D
+    class Quad3D :
+		public Transformable3D,
+		public priv::Drawable3D,
+		public Textureable3D,
+        public priv::Sizeable3D
     {
-    public:
+    private:
 		static void pushPointsBySize(
             const GLfloat x,
             const GLfloat y,
@@ -940,30 +1105,34 @@ namespace sf
             GLfloat originY = 0, 
             GLfloat originZ = 0)
 		{
-            Window3D::pushPoint({ originX, originY, originZ, 0, 0 });
-            Window3D::pushPoint({ originX, y + originY, originZ, 0, 1 });
-            Window3D::pushPoint({ x + originX, y + originY, originZ, 1, 1 });
-            Window3D::pushPoint({ x + originX, originY, originZ, 1, 0 });
+            Window3D::pushPoint({ originX, originY, originZ, 0, 0, -1, -1, 3});
+            Window3D::pushPoint({ originX, y + originY, originZ, 0, 1, 1, -1, 3});
+            Window3D::pushPoint({ x + originX, y + originY, originZ, 1, 1, 1, 1, 3 });
+            Window3D::pushPoint({ x + originX, originY, originZ, 1, 0, -1, 1, 3 });
 		}
     
     public:
 
         Quad3D() :
-            Transformable3D(), Drawable3D(4)
+            Transformable3D(),
+    		Drawable3D(4)
         {
             pushPointsBySize(1, 1,1);
             this->pointer_begin_ = Window3D::registerDrawable3D(4);
         }
     	
-        Quad3D(const Point& point0, const Point& point1, const Point&point2, const Point& point4) :
-            Transformable3D(), Drawable3D(4)
+        Quad3D(const Point& point0, const Point& point1, const Point& point2, const Point& point4) :
+            Transformable3D(),
+    		Drawable3D(4)
         {
             Window3D::pushPoint(point0, point1, point2, point4);
             this->pointer_begin_ = Window3D::registerDrawable3D(4);
         }
 
         Quad3D(const Vector3f& origin, const Vector2f& size) :
-            Transformable3D(), Drawable3D(4)
+            Transformable3D(),
+    		Drawable3D(4),
+            Sizeable3D({ size.x, size.y, 0.0F })
         {
             pushPointsBySize(size.x, size.y, origin.x, origin.y, origin.z);
 
@@ -971,68 +1140,79 @@ namespace sf
         }
 
         Quad3D(const Vector2f& size) :
-            Transformable3D(), Drawable3D(4)
+            Transformable3D(),
+    		Drawable3D(4),
+            Sizeable3D({ size.x, size.y, 0.0F })
         {
             pushPointsBySize(size.x, size.y);
             this->pointer_begin_ = Window3D::registerDrawable3D(4);
         }
 
         Quad3D(const GLfloat size_x, const GLfloat size_y) :
-            Transformable3D(), Drawable3D(4)
+            Transformable3D(),
+    		Drawable3D(4),
+            Sizeable3D({ size_x, size_y, 0.0F })
         {
             pushPointsBySize(size_x, size_y);
             this->pointer_begin_ = Window3D::registerDrawable3D(4);
         }
 
-        void draw(const Transform3D& transform) override
+    protected:
+        void draw(RenderTarget& target, RenderStates) const override
         {
             priv::TextureManager3D::bindTexture3D(&this->texture_);
             Window3D::reloadPointer(this);
-            this->glReleaseTransform(transform);
+            glMatrixMode(GL_MODELVIEW);
+            this->glReleaseTransform();
             this->drawArrays(GL_QUADS);
         }
     };
 
-    class Cube3D : public Transformable3D, public Drawable3D, public Textureable3D
+    class Cube3D :
+		public Transformable3D,
+		public priv::Drawable3D,
+		public Textureable3D,
+        public priv::Sizeable3D
     {
     public:
         static GLint pushPointsBySize(
             const GLfloat x,
             const GLfloat y, 
             const GLfloat z,
-            GLfloat originX = 0,
-            GLfloat originY = 0,
-            GLfloat originZ = 0)
+            const GLfloat originX = 0,
+            const GLfloat originY = 0,
+            const GLfloat originZ = 0,
+            const GLfloat tex_scale = 1)
         {
             Window3D::pushPoint({ originX, originY, originZ, 0, 0 });
-            Window3D::pushPoint({ originX, y + originY, originZ, 0, 1 });
-            Window3D::pushPoint({ x + originX, y + originY, originZ, 1, 1 });
-            Window3D::pushPoint({ x + originX, originY, originZ, 1, 0 });
+            Window3D::pushPoint({ originX, y + originY, originZ, 0, 1 * tex_scale });
+            Window3D::pushPoint({ x + originX, y + originY, originZ, 1 * tex_scale , 1 * tex_scale });
+            Window3D::pushPoint({ x + originX, originY, originZ, 1 * tex_scale , 0 });
 
             Window3D::pushPoint({ originX, originY, originZ, 0, 0 });
-            Window3D::pushPoint({ originX, originY, z + originZ, 0, 1 });
-            Window3D::pushPoint({ x + originX, originY, z + originZ, 1, 1 });
-            Window3D::pushPoint({ x + originX, originY, originZ, 1, 0 });
+            Window3D::pushPoint({ originX, originY, z + originZ, 0, 1 * tex_scale });
+            Window3D::pushPoint({ x + originX, originY, z + originZ, 1 * tex_scale , 1 * tex_scale });
+            Window3D::pushPoint({ x + originX, originY, originZ, 1 * tex_scale , 0 });
 
             Window3D::pushPoint({ originX, originY, originZ, 0, 0 });
-            Window3D::pushPoint({ originX, originY, z + originZ, 0, 1 });
-            Window3D::pushPoint({ originX, y + originY, z + originZ, 1, 1 });
-            Window3D::pushPoint({ originX, y + originY, originZ, 1, 0 });
+            Window3D::pushPoint({ originX, originY, z + originZ, 0, 1 * tex_scale });
+            Window3D::pushPoint({ originX, y + originY, z + originZ, 1 * tex_scale , 1 * tex_scale });
+            Window3D::pushPoint({ originX, y + originY, originZ, 1 * tex_scale , 0 });
 
             Window3D::pushPoint({ x + originX, originY, originZ, 0, 0 });
-            Window3D::pushPoint({ x + originX, originY, z + originZ, 0, 1 });
-            Window3D::pushPoint({ x + originX, y + originY, z + originZ, 1, 1 });
-            Window3D::pushPoint({ x + originX, y + originY, originZ, 1, 0 });
+            Window3D::pushPoint({ x + originX, originY, z + originZ, 0, 1 * tex_scale });
+            Window3D::pushPoint({ x + originX, y + originY, z + originZ, 1 * tex_scale , 1 * tex_scale });
+            Window3D::pushPoint({ x + originX, y + originY, originZ, 1 * tex_scale , 0 });
 
             Window3D::pushPoint({ originX, y + originY, originZ, 0, 0 });
-            Window3D::pushPoint({ originX, y + originY, z + originZ, 0, 1 });
-            Window3D::pushPoint({ x + originX, y + originY, z + originZ, 1, 1 });
-            Window3D::pushPoint({ x + originX, y + originY, originZ, 1, 0 });
+            Window3D::pushPoint({ originX, y + originY, z + originZ, 0, 1 * tex_scale });
+            Window3D::pushPoint({ x + originX, y + originY, z + originZ, 1 * tex_scale , 1 * tex_scale });
+            Window3D::pushPoint({ x + originX, y + originY, originZ, 1 * tex_scale , 0 });
 
             Window3D::pushPoint({ originX, originY, z + originZ, 0, 0 });
-            Window3D::pushPoint({ originX, y + originY, z + originZ, 0, 1 });
-            Window3D::pushPoint({ x + originX, y + originY, z + originZ, 1, 1 });
-            Window3D::pushPoint({ x + originX, originY, z + originZ, 1, 0 });
+            Window3D::pushPoint({ originX, y + originY, z + originZ, 0, 1 * tex_scale });
+            Window3D::pushPoint({ x + originX, y + originY, z + originZ, 1 * tex_scale , 1 * tex_scale });
+            Window3D::pushPoint({ x + originX, originY, z + originZ, 1 * tex_scale , 0 });
 
             return 24;
         }
@@ -1040,48 +1220,62 @@ namespace sf
     public:
 
         Cube3D() :
-    	Transformable3D(), Drawable3D(24)
+    		Transformable3D(),
+    		Drawable3D(24)
         {
             pushPointsBySize(1, 1, 1);
             this->pointer_begin_ = Window3D::registerDrawable3D(24);
         }
 
         Cube3D(const Vector3f& position, const Vector3f& size) :
-            Transformable3D(), Drawable3D(24)
+            Transformable3D(),
+    		Drawable3D(24),
+            Sizeable3D(size)
         {
             pushPointsBySize(size.x, size.y, size.z);
             this->m_position = position;
             this->pointer_begin_ = Window3D::registerDrawable3D(24);
         }
 
-        Cube3D(const Vector3f& size) :
-            Transformable3D(), Drawable3D(24)
+        Cube3D(const Vector3f& size, GLfloat tex_scale = 1) :
+            Transformable3D(),
+    		Drawable3D(24),
+            Sizeable3D(size)
         {
-            pushPointsBySize(size.x, size.y, size.z);
+            pushPointsBySize(size.x, size.y, size.z, 0, 0, 0, tex_scale);
             this->pointer_begin_ = Window3D::registerDrawable3D(24);
         }
 
         Cube3D(const GLfloat size_x, const GLfloat size_y, const GLfloat size_z) :
-            Transformable3D(), Drawable3D(24)
+            Transformable3D(),
+    		Drawable3D(24),
+            Sizeable3D({ size_x, size_y, size_z })
         {
             pushPointsBySize(size_x, size_y, size_z);
             this->pointer_begin_ = Window3D::registerDrawable3D(24);
         }
-
-        void draw(const Transform3D& transform) override
+    
+    protected:
+        void draw(RenderTarget&, RenderStates) const override
         {
             priv::TextureManager3D::bindTexture3D(&this->texture_);
             Window3D::reloadPointer(this);
-            this->glReleaseTransform(transform);
+            glMatrixMode(GL_MODELVIEW);
+            this->glReleaseTransform();
             this->drawArrays(GL_QUADS);
         }
     };
 
-    class Sphere3D : public Transformable3D, public Drawable, public Textureable3D
+    class Sphere3D : public Transformable3D,
+		public Drawable, public Textureable3D
     {
     public:
 
-        Sphere3D() : quadratic_(gluNewQuadric())
+        Sphere3D() :
+    		quadratic_(gluNewQuadric()),
+            radius_(10),
+            slices_(10),
+            stacks_(10)
         {
             gluQuadricTexture(quadratic_, GL_TRUE);
         }
@@ -1104,12 +1298,10 @@ namespace sf
         {
             gluQuadricTexture(quadratic_, GL_TRUE);
         }
-    	
-        void draw(RenderTarget&, RenderStates) const override
+
+    	compl Sphere3D()
         {
-            priv::TextureManager3D::bindTexture3D(&(this->texture_));
-            this->glReleaseTransform();
-            gluSphere(quadratic_, radius_, slices_, stacks_);
+            gluDeleteQuadric(quadratic_);
         }
 
         void setRadius(const GLdouble radius) const
@@ -1141,12 +1333,438 @@ namespace sf
         {
             return stacks_;
         }
+
+    protected:
+        void draw(RenderTarget&, RenderStates) const override
+        {
+            priv::TextureManager3D::bindTexture3D(&(this->texture_));
+            glMatrixMode(GL_MODELVIEW);
+            this->glReleaseTransform();
+            gluSphere(quadratic_, radius_, slices_, stacks_);
+        }
     
     private:
         GLUquadric* quadratic_;
         mutable GLdouble radius_;
         mutable GLint slices_;
         mutable GLint stacks_;
+    };
+
+    class Disk3D : public Transformable3D,
+		public Drawable, public Textureable3D
+    {
+    public:
+
+        Disk3D() :
+    		quadratic_(gluNewQuadric()),
+            inner_radius_(5),
+            outer_radius_(10),
+            slices_(10),
+            loops_(10)
+        {
+            gluQuadricTexture(quadratic_, GL_TRUE);
+        }
+
+
+
+        Disk3D(const GLdouble inner_radius, 
+            const GLdouble outer_radius, 
+            const GLint slices, const GLint loops) :
+            quadratic_(gluNewQuadric()),
+            inner_radius_(inner_radius),
+    		outer_radius_(outer_radius),
+            slices_(slices),
+            loops_(loops)
+        {
+            gluQuadricTexture(quadratic_, GL_TRUE);
+        }
+
+        compl Disk3D()
+        {
+            gluDeleteQuadric(quadratic_);
+        }
+
+        void setInnerRadius(const GLdouble inner_radius) const
+        {
+            inner_radius_ = inner_radius;
+        }
+
+        void setOuterRadius(const GLdouble outer_radius) const
+        {
+            outer_radius_ = outer_radius;
+        }
+
+        void setSlices(const GLint slices) const
+        {
+            slices_ = slices;
+        }
+
+        void setLoops(const GLint loops) const
+        {
+            loops_ = loops;
+        }
+
+        GLdouble getInnerRadius() const
+        {
+            return inner_radius_;
+        }
+
+        GLdouble getOuterRadius() const
+        {
+            return outer_radius_;
+        }
+
+        GLint getSlices() const
+        {
+            return slices_;
+        }
+
+        GLint getLoops() const
+        {
+            return loops_;
+        }
+
+    protected:
+        void draw(RenderTarget&, RenderStates) const override
+        {
+            priv::TextureManager3D::bindTexture3D(&(this->texture_));
+            glMatrixMode(GL_MODELVIEW);
+            this->glReleaseTransform();
+            gluDisk(quadratic_, inner_radius_, outer_radius_, slices_, loops_);
+        }
+
+    private:
+        GLUquadric* quadratic_;
+        mutable GLdouble inner_radius_;
+        mutable GLdouble outer_radius_;
+        mutable GLint slices_;
+        mutable GLint loops_;
+    };
+
+    class Cylinder3D :
+		public Transformable3D,
+		public Drawable,
+		public Textureable3D
+    {
+    public:
+
+        Cylinder3D() :
+    		quadratic_(gluNewQuadric()),
+            base_radius_(5),
+            top_radius_(10),
+            slices_(10),
+            height_(10),
+            stacks_(10)
+        {
+            gluQuadricTexture(quadratic_, GL_TRUE);
+        }
+
+
+
+        Cylinder3D(const GLdouble base_radius, const GLdouble top_radius, const GLint slices, const GLfloat height, const GLint stacks) :
+            quadratic_(gluNewQuadric()),
+            base_radius_(base_radius),
+            top_radius_(top_radius),
+            slices_(slices),
+            height_(height),
+    		stacks_(stacks)
+        {
+            gluQuadricTexture(quadratic_, GL_TRUE);
+        }
+
+        compl Cylinder3D() 
+        {
+            gluDeleteQuadric(quadratic_);
+        }
+
+        void setBaseRadius(const GLdouble inner_radius) const
+        {
+            base_radius_ = inner_radius;
+        }
+
+        void setTopRadius(const GLdouble outer_radius) const
+        {
+            top_radius_ = outer_radius;
+        }
+
+        void setSlices(const GLint slices) const
+        {
+            slices_ = slices;
+        }
+
+        void setHeight(const GLdouble height) const
+        {
+            height_ = height;
+        }
+
+        void setStacks(const GLint stacks) const
+        {
+            stacks_ = stacks;
+        }
+
+        GLdouble getBaseRadius() const
+        {
+            return base_radius_;
+        }
+
+        GLdouble getTopRadius() const
+        {
+            return top_radius_;
+        }
+
+        GLint getSlices() const
+        {
+            return slices_;
+        }
+
+        GLdouble getHeight() const
+        {
+            return height_;
+        }
+
+        GLint getStack() const
+        {
+            return stacks_;
+        }
+
+    protected:
+        void draw(RenderTarget&, RenderStates) const override
+        {
+            priv::TextureManager3D::bindTexture3D(&(this->texture_));
+            glMatrixMode(GL_MODELVIEW);
+            this->glReleaseTransform();
+            gluCylinder(quadratic_, base_radius_, top_radius_, height_, slices_, stacks_);
+        }
+
+    private:
+        GLUquadric* quadratic_;
+        mutable GLdouble base_radius_;
+        mutable GLdouble top_radius_;
+        mutable GLint slices_;
+        mutable GLdouble height_;
+        mutable GLint stacks_;
+    };
+
+	
+    class Light	: public Transformable3D, public Drawable
+    {
+    	
+    private:
+        inline static unsigned __int8 lights_num_ = 0;
+        GLenum light_enum_ = GL_LIGHT0;
+
+    public:
+
+        Light(
+            const Vector4<GLfloat>& ambient = { .0F, .0F, .0F, 1.0F },
+            const Vector4<GLfloat>& diffuse = { 1.0F, 1.0F, 1.0F, 1.0F },
+            const Vector4<GLfloat>& specular = { 1.0F, 1.0F, 1.0F, 1.0F },
+            const GLfloat           exponent = 10.0F,
+            const GLfloat           cutoff = 100.0F,
+            const GLfloat           linear_attenuation = .0F,
+            const GLfloat           quadratic_attenuation = .0F,
+            const GLfloat           constant_attenuation = 1.0F,
+            const bool              is_directed = GL_TRUE) :
+            ambient_(ambient),
+            diffuse_(diffuse),
+            specular_(specular),
+            exponent_(exponent),
+            cutoff_(cutoff),
+            linear_attenuation_(linear_attenuation),
+            quadratic_attenuation_(quadratic_attenuation),
+            constant_attenuation_(constant_attenuation),
+            is_directed_(is_directed)
+        {
+            if (lights_num_ > 8)
+            {
+                throw std::runtime_error("LIGHTS MORE THEN 8");
+            }
+
+            light_enum_ += lights_num_;
+            lights_num_++;
+        }
+
+    	compl Light()
+        {
+            lights_num_--;
+        	
+        }
+
+    protected:
+    	void draw(RenderTarget& target, RenderStates states) const override
+    	{
+            glEnable(GL_DEPTH_TEST);
+            glEnable(GL_COLOR_MATERIAL);
+            glEnable(GL_NORMALIZE);
+            glEnable(GL_TEXTURE_2D);
+            glEnable(GL_LIGHTING);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_TRUE);
+            glEnable(light_enum_);
+    		
+            Window3D::lightfv(light_enum_, GL_AMBIENT,  ambient_);
+            Window3D::lightfv(light_enum_, GL_DIFFUSE,  diffuse_);
+            Window3D::lightfv(light_enum_, GL_SPECULAR, specular_);
+            Window3D::lightfv(light_enum_, GL_POSITION, m_position,
+                (is_directed_ == GL_TRUE) ? .0F : 1.0F);
+            Window3D::lightfv(light_enum_, GL_SPOT_DIRECTION, m_rotation);
+            glLightf(light_enum_, GL_SPOT_EXPONENT, exponent_);
+            glLightf(light_enum_, GL_SPOT_CUTOFF, cutoff_);
+            //glLightf(light_enum_, GL_LINEAR_ATTENUATION, linear_attenuation_);
+            //glLightf(light_enum_, GL_QUADRATIC_ATTENUATION, quadratic_attenuation_);
+            //glLightf(light_enum_, GL_CONSTANT_ATTENUATION, constant_attenuation_);
+    	}
+
+    public:
+
+
+        /**
+         * \brief Set background lighting value
+         * [Óñòàíîâèòü çíà÷åíèå ôîíîâîé ïîäñâåòêè]
+         * \param ambient values of color in rgba-type
+         */
+        void setAmbient(const Vector4<GLfloat>& ambient) const
+    	{
+            ambient_ = ambient;
+    	}
+
+        void ambient(const Vector4<GLfloat>& ambient) const
+        {
+            ambient_ += ambient;
+        }
+    	
+        void setDiffuse(const Vector4<GLfloat>& diffuse) const
+        {
+            diffuse_ = diffuse;
+        }
+
+        void diffuse(const Vector4<GLfloat>& diffuse) const
+        {
+            diffuse_ += diffuse;
+        }
+
+        void setSpecular(const Vector4<GLfloat>& specular) const
+        {
+            specular_ = specular;
+        }
+
+        void specular(const Vector4<GLfloat>& specular) const
+        {
+            specular_ += specular;
+        }
+
+		void setExponent(const GLfloat exponent) const
+    	{
+            exponent_ = exponent;
+    	}
+
+        void exponent(const GLfloat exponent) const
+        {
+            exponent_ += exponent;
+        }
+
+        void setCutoff(const GLfloat cutoff) const
+        {
+            cutoff_ = cutoff;
+        }
+
+        void cutoff(const GLfloat cutoff) const
+        {
+            cutoff_ += cutoff;
+        }
+
+        void setLinearAttenuation(const GLfloat linear_attenuation) const
+        {
+            linear_attenuation_ = linear_attenuation;
+        }
+
+        void linearAttenuation(const GLfloat linear_attenuation) const
+        {
+            linear_attenuation_ += linear_attenuation;
+        }
+
+        void setQuadraticAttenuation(const GLfloat quadratic_attenuation) const
+        {
+            quadratic_attenuation_ = quadratic_attenuation;
+        }
+
+        void quadraticAttenuation(const GLfloat quadratic_attenuation) const
+        {
+            quadratic_attenuation_ += quadratic_attenuation;
+        }
+
+        void setConstantAttenuation(const GLfloat constant_attenuation) const
+        {
+            constant_attenuation_ = constant_attenuation;
+        }
+
+        void constantAttenuation(const GLfloat constant_attenuation) const
+        {
+            constant_attenuation_ += constant_attenuation;
+        }
+
+    	/*
+    	 * 
+    	 */
+    	void setLightIsDirected(const bool enabled) const
+        {
+            is_directed_ = enabled;
+        }
+
+        const Vector4<GLfloat>& getAmbient() const
+        {
+            return ambient_;
+        }
+
+        const Vector4<GLfloat>& getDiffuse() const
+        {
+            return diffuse_;
+        }
+
+        const Vector4<GLfloat>& getSpecular() const
+        {
+            return specular_;
+        }
+
+        const GLfloat& getExponent() const
+        {
+            return exponent_;
+        }
+
+        const GLfloat& getCutoff() const
+        {
+            return cutoff_;
+        }
+
+        const GLfloat& getLinearAttenuation() const
+        {
+            return linear_attenuation_;
+        }
+
+        const GLfloat& getQuadraticAttenuation() const
+        {
+            return quadratic_attenuation_;
+        }
+
+        const GLfloat& getConstantAttenuation() const
+        {
+            return constant_attenuation_;
+        }
+    	
+    
+    private:
+    	
+        mutable Vector4<GLfloat> ambient_;
+        mutable Vector4<GLfloat> diffuse_;
+        mutable Vector4<GLfloat> specular_;
+    	
+        mutable GLfloat exponent_;
+        mutable GLfloat cutoff_;
+        mutable GLfloat linear_attenuation_;
+        mutable GLfloat quadratic_attenuation_;
+        mutable GLfloat constant_attenuation_;
+    	
+        mutable bool is_directed_;
+
     };
 	
 }
